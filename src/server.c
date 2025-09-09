@@ -11,18 +11,21 @@
 #include <string.h>
 
 // Send file from ../example/ directory to client
-void send_file(int sockfd, const char *filename, struct sockaddr_in *client_addr, socklen_t client_len) {
+void send_file(int sockfd, const char *filename, struct sockaddr_in *client_addr, socklen_t client_len)
+{
     char path[256];
     snprintf(path, sizeof(path), "../example/%s", filename);
     FILE *fp = fopen(path, "r");
-    if (fp == NULL) {
+    if (fp == NULL)
+    {
         printf("[ERROR] file not found: %s\n", path);
         // Optionally send error message to client
         return;
     }
     char file_buffer[SIZE];
     int n;
-    while ((n = fread(file_buffer, 1, SIZE, fp)) > 0) {
+    while ((n = fread(file_buffer, 1, SIZE, fp)) > 0)
+    {
         sendto(sockfd, file_buffer, n, 0, (struct sockaddr *)client_addr, client_len);
     }
     fclose(fp);
@@ -35,7 +38,7 @@ int main()
     int server_sockfd;
     struct sockaddr_in server_addr, client_addr;
     socklen_t client_len = sizeof(client_addr);
-    struct Packet pkt, recv_pkt;    
+    struct Packet pkt, recv_pkt;
     char buffer[SIZE];
 
     // Create an UDP socket
@@ -58,27 +61,30 @@ int main()
         exit(EXIT_FAILURE);
     }
 
-    //Ready to handshake
-    recvfrom(server_sockfd, &recv_pkt, sizeof(recv_pkt), 0, (struct sockaddr*)&client_addr, &client_len);
-    if  (recv_pkt.flags == FLAG_SYN) {
+    // Ready to handshake
+    recvfrom(server_sockfd, &recv_pkt, sizeof(recv_pkt), 0, (struct sockaddr *)&client_addr, &client_len);
+    if (recv_pkt.flags == FLAG_SYN)
+    {
         printf("[SERVER] Received SYN (seq=%d)\n", recv_pkt.seq_number);
-    } 
+    }
 
     pkt.seq_number = 200;
     pkt.ack_number = recv_pkt.seq_number + 1;
-    pkt.flags = FLAG_ACK;     // ACK    
-    sendto(server_sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr*)&client_addr, client_len);
+    pkt.flags = FLAG_SYN | FLAG_ACK; // ACK
+    sendto(server_sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr *)&client_addr, client_len);
 
     recvfrom(server_sockfd, &recv_pkt, sizeof(recv_pkt), 0,
              (struct sockaddr *)&client_addr, &client_len);
-    if (recv_pkt.flags == FLAG_ACK) { // ACK
+    if (recv_pkt.flags == FLAG_ACK)
+    { // ACK
         printf("[SERVER] Received ACK (ack=%d)\n", recv_pkt.ack_number);
         printf("[SERVER] Handshake complete!\n");
     }
 
     // Receive filename from client
     int recv_len = recvfrom(server_sockfd, buffer, SIZE, 0, (struct sockaddr *)&client_addr, &client_len);
-    if (recv_len < 0) {
+    if (recv_len < 0)
+    {
         printf("[ERROR] failed to receive filename\n");
         close(server_sockfd);
         exit(EXIT_FAILURE);
