@@ -10,6 +10,6 @@ int send_file(int sockfd, const char *filename, struct sockaddr_in *dest_addr, s
 
 int receive_file(int server_sockdf, const char *filename);
 
-
+int client_perform_handshake(int sockfd, struct sockaddr_in *server_addr, char *filename);
 
 #endif
