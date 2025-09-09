@@ -4,10 +4,10 @@
 #include <stdint.h>
 
 #define MAX_PAYLOAD_SIZE 1024
-#define FLAG_DATA 0x00
-#define FLAG_ACK  0x01
-#define FLAG_FIN  0x02
-#define FLAG_SYN  0x03
+#define FLAG_DATA 0b00000001 // 1: Packet นี้มีข้อมูลไฟล์
+#define FLAG_ACK  0b00000010 // 2: Packet นี้เป็น Acknowledgement
+#define FLAG_SYN  0b00000100 // 4: Packet นี้ใช้สำหรับ Synchronize (เริ่มต้นการเชื่อมต่อ)
+#define FLAG_FIN  0b00001000 // 8: Packet นี้ใช้สำหรับ Finish (สิ้นสุดการส่งไฟล์)
 
 
 // Packet structure
@@ -43,7 +43,7 @@ typedef struct {
 int serialize_packet(const Packet *pkt, char *buffer);
 
 // Deserialize buffer → struct
-void deserialize_packet(const char *buffer, int size, Packet *pkt);
+int deserialize_packet(const char *buffer, int size, Packet *pkt);
 
 // Checksum utility
 uint16_t calculate_checksum(const char *data, int length);

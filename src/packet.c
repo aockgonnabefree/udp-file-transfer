@@ -36,10 +36,12 @@ int serialize(Packet *pkt, unsigned char *buffer) {
     /*
     Function to Serialize Struct --> Array of Bytes
     */
+   return 1;
 }
 
-void deserialize(unsigned char *buffer, int size, Packet *pkt) {
+int deserialize(unsigned char *buffer, int size, Packet *pkt) {
     /*
     Function to Deserialize Array of Bytes --> Struct
     */
+   return 1;
 }
