@@ -68,10 +68,6 @@ int perform_handshake(int sockfd, struct sockaddr_in *server_addr){
 
 }
 
-// TODO: add more params
-void send_file() {
-}
-
 int main() {
 
     // 
