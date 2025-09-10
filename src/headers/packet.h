@@ -41,6 +41,6 @@ int serialize_packet(const Packet *pkt, char *buffer);
 int deserialize_packet(const char *buffer, int size, Packet *pkt);
 
 // Checksum utility
-uint16_t calculate_checksum(const char *data, int length);
+uint16_t calculate_checksum(Packet *pkt);
 
 #endif

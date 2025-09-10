@@ -10,7 +10,7 @@ OBJS = $(OBJS_DIR)/packet.o $(OBJS_DIR)/protocol.o
 CLIENT_OBJS = $(OBJS_DIR)/client.o $(OBJS)
 SERVER_OBJS = $(OBJS_DIR)/server.o $(OBJS)
 
-all: remove_client_file clean client server
+all: make_download_dir_for_client make_output_dir remove_client_file clean client server
 
 client: $(CLIENT_OBJS)
 	$(CC) $(CFLAGS) -o $(BUILDS_DIR)/$@.out $(CLIENT_OBJS)
@@ -26,3 +26,9 @@ clean:
 
 remove_client_file:
 	rm -f $(CLIENT_DOWNLOAD_DIR)/*
+
+make_output_dir:
+	mkdir -p builds/objs
+
+make_download_dir_for_client:
+	mkdir -p $(CLIENT_DOWNLOAD_DIR)
