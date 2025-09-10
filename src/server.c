@@ -44,33 +44,23 @@ int main(){
     }
 
     while(1) {
+        connection_t conn;
+        conn.algo = STOP_AND_WAIT; // config ได้
+        conn.window_size = 10; // deafault กรณีใช้ Go back n, Selective repeat
         printf("Server is running. Waiting for SYN packet. (CTRL+C to exit)\n");
-        if (server_handle_syn(server_sockfd, &client_addr, client_len) == -1) {
+        if (server_handle_syn(server_sockfd, &client_addr, client_len, &conn) == 0) {
+            send_file(server_sockfd, &client_addr, client_len, &conn);
+        } else {
             printf("[ERROR] Connection Establishment failed\n");
-            // continue; // Wait for the next client
         }
+
+        struct timeval tv_reset;
+        tv_reset.tv_sec = 0;
+        tv_reset.tv_usec = 0;
+        setsockopt(server_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv_reset, sizeof tv_reset);
     }
 
     // Close UDP socket
     close(server_sockfd);
     return 0;
 }
-
-// Send file from ../example/ directory to client
-// void send_file(int sockfd, const char *filename, struct sockaddr_in *client_addr, socklen_t client_len) {
-//     char path[256];
-//     snprintf(path, sizeof(path), "../example/%s", filename);
-//     FILE *fp = fopen(path, "r");
-//     if (fp == NULL) {
-//         printf("[ERROR] file not found: %s\n", path);
-//         // Optionally send error message to client
-//         return;
-//     }
-//     char file_buffer[BUFFER_SIZE];
-//     int n;
-//     while ((n = fread(file_buffer, 1, BUFFER_SIZE, fp)) > 0) {
-//         sendto(sockfd, file_buffer, n, 0, (struct sockaddr *)client_addr, client_len);
-//     }
-//     fclose(fp);
-//     printf("[SUCCESS] File sent to client\n");
-// }

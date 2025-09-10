@@ -22,12 +22,7 @@ typedef struct {
     check_sum      (16-bit) : เอาไว้ทำ checksum
     window         (16-bit) : เอาไว้บอกว่าผู้รับสามารถรับได้อีกกี่ไบต์
     flags          (8-bit)  : บอกว่า payload นี้เป็นข้อมูลประเภทไหน 
-        DATA    (0000 0000) -> payload เป็นข้อมูล
-        ACK     (0000 0001) -> payload เป็น Ackknowledgement
-        FIN     (0000 0010) -> payload เป็น Packet สุดท้าย
-        SYN     (0000 0011) -> payload เป็น Packet เริ่มต้น
-
-    payload         (payload size - bit) : เก็บข้อมูลที่กำลังส่ง
+    payload        (payload size - bit) : เก็บข้อมูลที่กำลังส่ง
     
     */
     uint32_t seq_number;
