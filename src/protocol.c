@@ -3,9 +3,11 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
+#include <time.h>
 
 #include "packet.h"
 #include "protocol.h"
+#include "utils/udtSimulate.h"
 
 #define IP "127.0.0.1"
 #define PORT 8080
@@ -45,11 +47,14 @@ int send_file(int sockfd, struct sockaddr_in *dest_addr, socklen_t dest_len, con
         data_pkt.seq_number = conn->seq_num;
         data_pkt.ack_number = conn->ack_num;
         data_pkt.flags = FLAG_DATA; // Packet เป็นการส่งข้อมูล
-        
+
         // copy data into payload, tell bytes length
         memcpy(data_pkt.payload, file_buffer, bytes_read);
         data_pkt.payload_length = bytes_read;
-        
+
+        // CheckSum เพื่อให้ Client สามารถตรวจสอบได้ว่า DATA packet ที่ได้รับมานั้นสมบูรณ์หรือไม่
+        data_pkt.check_sum = calculate_checksum(&data_pkt);
+
         // Must TO DO
         // serialize
         // checksum
@@ -60,9 +65,24 @@ int send_file(int sockfd, struct sockaddr_in *dest_addr, socklen_t dest_len, con
         // Step 2.2: stop and wait implementation
         int ack_receive = 0;
         while (!ack_receive) {
-            // send DATA pkt
-            sendto(sockfd, &data_pkt, sizeof(data_pkt), 0, (struct sockaddr *)dest_addr, dest_len);
-            printf("[SERVER] DATA packet sent. seq#: %d, ack#: %d\n", data_pkt.seq_number, data_pkt.ack_number);
+            // ========================Simulate===========================
+            data_pkt.check_sum = calculate_checksum(&data_pkt);
+            Packet temp_pkt = data_pkt; // create a copy of the original packet
+            packetCorrupted(&temp_pkt, 0.1); // 10% corruption
+
+            if (!packetLost(0.1)) {
+                // ถ้า packet ไม่ lost ก็ส่งตามปกติ
+                sendto(sockfd, &temp_pkt, sizeof(temp_pkt), 0, (struct sockaddr *)dest_addr, dest_len);
+                printf("[SERVER] DATA packet sent. seq#: %d, ack#: %d\n", data_pkt.seq_number, data_pkt.ack_number);
+            } else {
+                // ถ้า packet lost ก็ไม่ต้องส่ง และแสดง log เพื่อให้ทราบ
+                printf("[SERVER][SIMULATOR] Packet (seq=%d) was lost.\n", data_pkt.seq_number);
+
+            }        
+            // ======================End Simulate===========================
+            // // send DATA pkt
+            // sendto(sockfd, &data_pkt, sizeof(data_pkt), 0, (struct sockaddr *)dest_addr, dest_len);
+            // printf("[SERVER] DATA packet sent. seq#: %d, ack#: %d\n", data_pkt.seq_number, data_pkt.ack_number);
             
             int n = recvfrom(sockfd, &ack_from_client_pkt, sizeof(ack_from_client_pkt), 0, (struct sockaddr *)dest_addr, &dest_len);
 
@@ -72,7 +92,13 @@ int send_file(int sockfd, struct sockaddr_in *dest_addr, socklen_t dest_len, con
                 continue;
             }
 
-            // Check if it correct ACK packet
+            // เพื่อให้แน่ใจว่า ACK ที่ได้รับกลับมานั้นไม่เสียหาย ถ้าเสียหายก็ต้องทำเหมือนไม่ได้รับ ACK (รอ timeout)
+            if (!verify_checksum(&ack_from_client_pkt)) {
+                printf("[SERVER][ERROR] ACK packet corrupted. Discarding and waiting for timeout.\n");
+                continue; // ทิ้ง packet ที่เสียหาย แล้ววนกลับไปรอ timeout
+            }
+
+            // Check if it correct by ACK packet
             if (ack_from_client_pkt.ack_number == data_pkt.seq_number + data_pkt.payload_length) {
                 ack_receive = 1; // ACK ถูกต้อง -> ส่ง packet ต่อไป        
                 printf("[SERVER] ACK pkt recieved (ack=%d)\n", ack_from_client_pkt.ack_number);
@@ -92,6 +118,10 @@ int send_file(int sockfd, struct sockaddr_in *dest_addr, socklen_t dest_len, con
     // stop and wait for FIN-ACK pkt
     int fin_ack_receive = 0;
     while (!fin_ack_receive){
+
+        // CheckSum FIN Packet ก่อนส่ง
+        fin_pkt.check_sum = calculate_checksum(&fin_pkt);
+
         sendto(sockfd, &fin_pkt, sizeof(fin_pkt), 0, (struct sockaddr *)dest_addr, dest_len);
         printf("[SERVER] FIN packet sent\n");
 
@@ -100,6 +130,12 @@ int send_file(int sockfd, struct sockaddr_in *dest_addr, socklen_t dest_len, con
         // timeout
         if (n < 0) {
             printf("[SERVER] Resending FIN\n");
+        }
+
+        // กรอง Packet ที่เสียหายก่อนไปประมวลผล
+        if (!verify_checksum(&ack_from_client_pkt)) {
+            printf("[SERVER][ERROR] Corrupted FIN-ACK packet. Resending FIN.\n");
+            continue;
         }
 
         if (n > 0 && ack_from_client_pkt.ack_number == fin_pkt.seq_number + 1 && !(ack_from_client_pkt.flags ^ (FLAG_FIN | FLAG_ACK))) {
@@ -140,12 +176,22 @@ int receive_file(int server_sockfd, const char *filename, connection_t *conn) {
     while (1) {
         n = recvfrom(server_sockfd, &recv_pkt, sizeof(recv_pkt), 0, (struct sockaddr *)&from_addr, &from_len);
 
+        // กรอง Packet ที่เสียหายก่อนไปประมวลผล
+        if (!verify_checksum(&recv_pkt)) {
+            printf("[CLIENT][ERROR] Corrupted packet received (seq#: %d). Discarding.\n", recv_pkt.seq_number);
+            continue; // ทิ้ง packet นี้ แล้วรอ Server ส่งมาใหม่
+        }
+
         if (recv_pkt.flags & FLAG_FIN){
             printf("[CLIENT] FIN recieved\n");
 
             // send FIN-ACK to server
             ack_pkt.ack_number = recv_pkt.seq_number + 1;
             ack_pkt.flags = FLAG_FIN | FLAG_ACK;
+
+            // เพื่อให้ Server มั่นใจว่า FIN-ACK ที่ได้รับนั้นถูกต้อง
+            ack_pkt.check_sum = calculate_checksum(&ack_pkt);
+
             sendto(server_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *) &from_addr, from_len);
             printf("[CLIENT] FIN-ACK pkt sent\n");
             break;
@@ -168,6 +214,10 @@ int receive_file(int server_sockfd, const char *filename, connection_t *conn) {
         // ACK to server that it's correct packat
         ack_pkt.seq_number = 1; // just simulate, but it need to implement by conn
         ack_pkt.ack_number = recv_pkt.seq_number + recv_pkt.payload_length; // next seq number need from server (start of next byte stream)
+
+        // เหตุผล: เพื่อให้ Server เชื่อถือ ACK ที่เราส่งกลับไปได้
+        ack_pkt.check_sum = calculate_checksum(&ack_pkt);
+
         sendto(server_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *) &from_addr, from_len);
         printf("[CLIENT] ACK pkt sent (sent ack==%d)\n", ack_pkt.ack_number);
 
@@ -183,6 +233,15 @@ int server_handle_syn(int sockfd, struct sockaddr_in *client_addr, socklen_t cli
     Packet syn_pkt;
     // Step 1: รับ SYN Packet
     recvfrom(sockfd, &syn_pkt, sizeof(syn_pkt), 0, (struct sockaddr *)client_addr, &client_len);
+
+    printf("checksum: 0x%04X\n",syn_pkt.check_sum);
+
+    // ตรวจสอบหลังรับ
+    if (!verify_checksum(&syn_pkt)) {
+        printf("[SERVER][ERROR] Corrupted SYN packet. Handshake failed.\n");
+        return -1;
+    }
+
     if (syn_pkt.flags != FLAG_SYN) 
         return -1;
 
@@ -196,12 +255,28 @@ int server_handle_syn(int sockfd, struct sockaddr_in *client_addr, socklen_t cli
     syn_ack_pkt.seq_number = conn->seq_num;
     syn_ack_pkt.ack_number = conn->ack_num;
     syn_ack_pkt.flags = FLAG_SYN | FLAG_ACK;
+
+    // simulate windows and other field to 0 for testing purpose
+    syn_ack_pkt.payload_length = 0;
+    syn_ack_pkt.window = 0;
+    memset(syn_ack_pkt.payload, 0, sizeof(syn_ack_pkt.payload));
+
+    // คำนวณ CheckSum ก่อนส่ง
+    syn_ack_pkt.check_sum = calculate_checksum(&syn_ack_pkt);
+
     sendto(sockfd, &syn_ack_pkt, sizeof(syn_ack_pkt), 0, (struct sockaddr *)client_addr, client_len);
     printf("[SERVER] SYN-ACK packet sent. seq#: %d, ack#: %d\n", syn_ack_pkt.seq_number, syn_ack_pkt.ack_number); 
 
     // Step 3: รับ ACK-DATA
     Packet ack_data_pkt;
     recvfrom(sockfd, &ack_data_pkt, sizeof(ack_data_pkt), 0, (struct sockaddr *)client_addr, &client_len);
+
+    // ตรวจสอบหลังรับ
+    if (!verify_checksum(&ack_data_pkt)) {
+        printf("[SERVER][ERROR] Corrupted ACK-DATA packet. Handshake failed.\n");
+        return -1;
+    }
+
     if (! (ack_data_pkt.flags & (FLAG_ACK | FLAG_DATA))) 
         return -1;
 
@@ -228,19 +303,26 @@ int client_perform_handshake(int sockfd, struct sockaddr_in *server_addr, sockle
     syn_packet.flags = FLAG_SYN;
     syn_packet.seq_number = 0; // กำหนด Sequence Number ฝั่ง Client เริ่มที่ 0
 
+    syn_packet.check_sum = calculate_checksum(&syn_packet);
+
     if (sendto(sockfd, &syn_packet, sizeof(syn_packet), 0, (struct sockaddr *)server_addr, server_len) < 0) {
         printf("[CLIENT][ERROR] sending SYN packet");
         return -1;
     }
 
-    printf("[CLIENT] SYN packet sent. seq#: %d\n", syn_packet.seq_number);
+    printf("[CLIENT] SYN packet sent. seq#: %d, checksum: 0x%04X\n", syn_packet.seq_number, syn_packet.check_sum);
 
-    // Step 2: Client รอรับ SYN-ACK
+    // Step 2: Client รอรับ SYN-ACK --> Need to implement TIMEOUT to check that it failed to established
     Packet syn_ack_packet;
     if (recvfrom(sockfd, &syn_ack_packet, sizeof(syn_ack_packet), 0, (struct sockaddr *)server_addr, &server_len) < 0) {
         printf("[CLIENT][ERROR] receiving SYN-ACK packet\n");
         return -1;
     }
+
+    if (!verify_checksum(&syn_ack_packet)) {
+        printf("[CLIENT][ERROR] Corrupted SYN-ACK packet. Handshake failed.\n");
+        return -1;
+    }    
 
     // ตรวจสอบว่าแพ็กเก็ตที่ได้รับเป็น SYN-ACK หรือไม่
     if ((syn_ack_packet.flags & (FLAG_ACK | FLAG_SYN)) != (FLAG_ACK | FLAG_SYN)) {
@@ -258,6 +340,8 @@ int client_perform_handshake(int sockfd, struct sockaddr_in *server_addr, sockle
     // Data -> filename ที่ต้องการดาวน์โหลด (Optimized Part)
     ack_packet_with_data.payload_length = strlen(filename);
     memcpy(ack_packet_with_data.payload, filename, ack_packet_with_data.payload_length);
+
+    ack_packet_with_data.check_sum = calculate_checksum(&ack_packet_with_data);
     
     if (sendto(sockfd, &ack_packet_with_data, sizeof(ack_packet_with_data), 0, (struct sockaddr *)server_addr, server_len) < 0) {
         printf("[ERROR] sending ACK with data packet\n");

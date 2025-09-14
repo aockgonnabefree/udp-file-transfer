@@ -17,8 +17,8 @@ int main()
     struct sockaddr_in server_addr;
     socklen_t server_len = sizeof(server_addr);
     
-    // char *filename = "example.jpeg";
-    char *filename = "Chapter_1_v9.0.pptx";
+    char *filename = "example.jpeg";
+    // char *filename = "Chapter_1_v9.0.pptx";
 
     // Create an UDP socket
     server_sockfd = socket(AF_INET, SOCK_DGRAM, 0);

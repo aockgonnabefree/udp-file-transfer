@@ -56,3 +56,20 @@ u_int16_t calculate_checksum(Packet *pkt) {
     // 5. กลับบิต (one's complement) ของผลรวมสุดท้าย
     return (u_int16_t)~sum;
 }
+
+int verify_checksum(Packet *pkt) {
+    // Extract the checksum from the packet
+    u_int16_t received_check_sum = pkt->check_sum;
+
+    // Temporarily set the checksum field to 0
+    pkt->check_sum = 0;
+
+    // Calculate the check_sum of the packet
+    u_int16_t calculated_check_sum = calculate_checksum(pkt);
+
+    // Restore the original check_sum in the packet
+    pkt->check_sum = received_check_sum;
+
+    // Compare the calculated check_sum with the received check_sum
+    return (calculated_check_sum == received_check_sum);
+}

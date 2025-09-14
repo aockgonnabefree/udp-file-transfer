@@ -1,12 +1,12 @@
 CC = gcc
-CFLAGS = -Wall -I src/headers
+CFLAGS = -Wall -I src/headers -I src/utils
 SRC_DIR = src
 BUILDS_DIR = ./builds
 OBJS_DIR = $(BUILDS_DIR)/objs
 
 CLIENT_DOWNLOAD_DIR = ./client_download
 
-OBJS = $(OBJS_DIR)/packet.o $(OBJS_DIR)/protocol.o
+OBJS = $(OBJS_DIR)/packet.o $(OBJS_DIR)/protocol.o $(OBJS_DIR)/udtSimulate.o
 CLIENT_OBJS = $(OBJS_DIR)/client.o $(OBJS)
 SERVER_OBJS = $(OBJS_DIR)/server.o $(OBJS)
 
@@ -19,6 +19,10 @@ server: $(SERVER_OBJS)
 	$(CC) $(CFLAGS) -o $(BUILDS_DIR)/$@.out $(SERVER_OBJS)
 
 $(OBJS_DIR)/%.o: $(SRC_DIR)/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+
+$(OBJS_DIR)/udtSimulate.o: $(SRC_DIR)/utils/udtSimulate.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
