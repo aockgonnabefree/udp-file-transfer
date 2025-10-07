@@ -9,9 +9,6 @@
 #include "protocol.h"
 #include "utils/udtSimulate.h"
 
-#define IP "127.0.0.1"
-#define PORT 8080
-
 #define BUFFER_SIZE 1024
 
 int send_file(int sockfd, struct sockaddr_in *dest_addr, socklen_t dest_len, connection_t *conn) {
@@ -141,7 +138,7 @@ int send_file(int sockfd, struct sockaddr_in *dest_addr, socklen_t dest_len, con
         } else {
             printf("[SERVER] Resending FIN\n");
         }
-    }  
+    }
 
     fclose(fp);
     printf("[SUCCESS] File sent to client\n");

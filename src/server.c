@@ -7,7 +7,8 @@
 #include "packet.h"
 #include "protocol.h"
 
-#define IP "127.0.0.1"
+// #define IP "127.0.0.1"
+#define IP "10.31.22.230"
 #define PORT 8080
 #define BUFFER_SIZE 1024
 
