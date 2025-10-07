@@ -16,8 +16,6 @@
 
 #include <string.h>
 
-// void send_file(int sockfd, const char *filename, struct sockaddr_in *client_addr, socklen_t client_len);
-
 int main(){
     // Define variables
     int server_sockfd;
