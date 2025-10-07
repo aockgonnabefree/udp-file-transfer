@@ -7,7 +7,8 @@
 #include "packet.h"
 #include "protocol.h"
 
-#define IP "127.0.0.1"
+// #define IP "127.0.0.1"
+#define IP "10.31.22.230"
 #define PORT 8080
 
 int main()
@@ -17,8 +18,9 @@ int main()
     struct sockaddr_in server_addr;
     socklen_t server_len = sizeof(server_addr);
     
-    char *filename = "example.jpeg";
-    // char *filename = "Chapter_1_v9.0.pptx";
+    // char *filename = "example.jpeg";
+    char *filename = "Chapter_1_v9.0.pptx";
+    // char *filename = "example.txt";
 
     // Create an UDP socket
     server_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
