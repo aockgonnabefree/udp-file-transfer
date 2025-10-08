@@ -45,7 +45,7 @@ int main(){
     while(1) {
         connection_t conn;
         conn.algo = STOP_AND_WAIT; // config ได้
-        conn.window_size = 10; // deafault กรณีใช้ Go back n, Selective repeat
+        conn.window_size = 10; // default กรณีใช้ Go back n, Selective repeat
         printf("Server is running. Waiting for SYN packet. (CTRL+C to exit)\n");
         if (server_handle_syn(server_sockfd, &client_addr, client_len, &conn) == 0) {
             send_file(server_sockfd, &client_addr, client_len, &conn);

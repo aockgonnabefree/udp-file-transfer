@@ -52,12 +52,6 @@ int send_file(int sockfd, struct sockaddr_in *dest_addr, socklen_t dest_len, con
         // CheckSum เพื่อให้ Client สามารถตรวจสอบได้ว่า DATA packet ที่ได้รับมานั้นสมบูรณ์หรือไม่
         data_pkt.check_sum = calculate_checksum(&data_pkt);
 
-        // Must TO DO
-        // serialize
-        // checksum
-        // char send_buf[sizeof(data_pkt)];
-        // int size = serialize_packet(&data_pkt, send_buf);
-        // sendto(sockfd, send_buf, size, 0, (struct sockaddr *)dest_addr, dest_len);
 
         // Step 2.2: stop and wait implementation
         int ack_receive = 0;

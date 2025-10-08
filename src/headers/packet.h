@@ -34,12 +34,6 @@ typedef struct {
     char payload[MAX_PAYLOAD_SIZE];
 } Packet;
 
-// Serialize struct → buffer
-int serialize_packet(const Packet *pkt, char *buffer);
-
-// Deserialize buffer → struct
-int deserialize_packet(const char *buffer, int size, Packet *pkt);
-
 // Checksum utility
 uint16_t calculate_checksum(Packet *pkt);
 int verify_checksum(Packet *pkt);

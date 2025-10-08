@@ -4,20 +4,6 @@
 
 #define MAX_PAYLOAD_SIZE 1024
 
-int serialize(Packet *pkt, unsigned char *buffer) {
-    /*
-    Function to Serialize Struct --> Array of Bytes
-    */
-   return 1;
-}
-
-int deserialize(unsigned char *buffer, int size, Packet *pkt) {
-    /*
-    Function to Deserialize Array of Bytes --> Struct
-    */
-   return 1;
-}
-
 u_int16_t calculate_checksum(Packet *pkt) {
     // 1. ตั้งค่าฟิลด์ checksum ใน packet ให้เป็น 0 ชั่วคราว
     pkt->check_sum = 0;
