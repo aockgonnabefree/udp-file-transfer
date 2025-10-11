@@ -21,7 +21,7 @@
 │  payload_length  (16-bit / 2 bytes)              │  ขนาด payload จริง
 │  window          (16-bit / 2 bytes)              │  หน้าต่าง flow control
 │  check_sum       (16-bit / 2 bytes)              │  ตรวจจับข้อผิดพลาด
-│  flags           (8-bit  / 1 byte)               │  ธงประเภท packet
+│  flags           (8-bit  / 1 byte)               │  ประเภท packet
 ├──────────────────────────────────────────────────┤
 │  payload         (1024 bytes)                    │  ข้อมูลไฟล์
 └──────────────────────────────────────────────────┘
@@ -360,7 +360,7 @@ Client คาดหวัง: ack=3049 (2025+1024)
    - แทนที่ Stop-and-Wait ด้วย Selective Repeat
    - มี send/receive buffers
    - รับ packet ที่ไม่เรียงลำดับได้
-   - คาดว่าจะปรับปรุง throughput: 10-50 เท่า
+   - คาดว่าจะปรับปรุง throughput ได้ดียิ่งขึ้น
 
 4. **Congestion Control**
    - พัฒนา slow start และ congestion avoidance

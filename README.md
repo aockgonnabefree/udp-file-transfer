@@ -264,7 +264,7 @@ sudo ./builds/server.out 8080
 
 ## License
 
-โปรเจคการศึกษาสำหรับวิชา CS351 Networks and Clouds
+โปรเจคการศึกษาสำหรับวิชา CS351 Computer Communications and Cloud Computing Principles
 
 ## ผู้พัฒนา (Authors)
 
