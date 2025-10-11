@@ -28,7 +28,6 @@ typedef struct {
     uint32_t seq_number;
     uint32_t ack_number;
     uint16_t payload_length;
-    uint16_t window;
     uint16_t check_sum;
     uint8_t  flags;
     char payload[MAX_PAYLOAD_SIZE];

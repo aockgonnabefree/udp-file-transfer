@@ -125,6 +125,11 @@ Client จะ:
    cp /path/to/your/file example/testfile.txt
    ```
 
+   Note: มีไฟล์การทดสอบให้ทั้งหมด 3 ไฟล์คือ
+   - example.jpeg
+   - example.txt
+   - example.pptx
+
 2. **Terminal 1 - เริ่ม server:**
    ```bash
    ./builds/server.out 8080
@@ -167,9 +172,6 @@ md5 example/example.jpeg client_download/example.jpeg
 
 1. **บนเครื่อง Server:**
    ```bash
-   # หา IP ของ server
-   ifconfig  # หรือ ip addr
-
    # เริ่ม server
    ./builds/server.out 8080
    ```
@@ -190,21 +192,6 @@ md5 example/example.jpeg client_download/example.jpeg
 - `[SIMULATOR] >>> Corrupting packet <<<` - Packet ถูกทำให้เสียหาย
 - `[SERVER] Timeout, resending` - การส่งซ้ำถูกกระตุ้น
 - `[CLIENT][ERROR] Corrupted packet received` - การตรวจสอบ Checksum ล้มเหลว
-
-### Test 5: การส่งไฟล์ขนาดใหญ่
-
-ทดสอบกับไฟล์ขนาดใหญ่เพื่อตรวจสอบความน่าเชื่อถือ:
-
-```bash
-# สร้างไฟล์ทดสอบขนาดใหญ่ (10MB)
-dd if=/dev/urandom of=example/largefile.bin bs=1M count=10
-
-# ส่งไฟล์
-./builds/client.out 127.0.0.1 8080 largefile.bin
-
-# ตรวจสอบความถูกต้อง
-md5sum example/largefile.bin client_download/largefile.bin
-```
 
 ## ผลลัพธ์ที่คาดหวัง (Expected Output)
 
@@ -256,7 +243,7 @@ kill -9 <PID>
 ### Permission denied
 ```bash
 # ใช้ port > 1024 หรือรันด้วย sudo
-sudo ./builds/server.out 80
+sudo ./builds/server.out 8080
 ```
 
 ### Connection timeout
@@ -267,10 +254,6 @@ sudo ./builds/server.out 80
 ### ไม่พบไฟล์ (File not found)
 - ตรวจสอบว่าไฟล์มีอยู่ใน directory `example/` บน server
 - ตรวจสอบการสะกดและตัวพิมพ์ใหญ่-เล็กของชื่อไฟล์
-
-### Checksum errors
-- นี่เป็นพฤติกรรมที่คาดหวัง (อัตราความเสียหาย 1%)
-- ระบบจะส่งซ้ำอัตโนมัติ
 
 ## หมายเหตุด้านประสิทธิภาพ (Performance Notes)
 
@@ -285,5 +268,9 @@ sudo ./builds/server.out 80
 
 ## ผู้พัฒนา (Authors)
 
-- Implementation: [Your Name]
-- Course: CS351 - Networks and Clouds
+- Implementation:
+   - นาย
+   - นาย ไชยวัตน์ หนูวัฒนา รหัสนิสิต 6610401985
+   - นาย
+   - นาย
+- Course: CS351 - Computer Communications and Cloud Computing Principles

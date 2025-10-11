@@ -35,6 +35,9 @@ int send_file(int sockfd, struct sockaddr_in *dest_addr, socklen_t dest_len, con
     // ack_from_client_pkt: สำหรับ pkt ที่ client ส่งมาเพื่อ ACK
     // fin_pkt: สำหรับ pkt เพื่อส่งบอก client ว่าเสร็จสิ้นการส่งไฟล์
     Packet data_pkt, ack_from_client_pkt, fin_pkt;
+    memset(&data_pkt, 0, sizeof(data_pkt));
+    memset(&ack_from_client_pkt, 0, sizeof(ack_from_client_pkt));
+    memset(&fin_pkt, 0, sizeof(fin_pkt));
     int seq = conn->seq_num + 1; // next sequence number from handshake
 
     // Step 2: เริ่มส่งไฟล์
@@ -128,7 +131,7 @@ int send_file(int sockfd, struct sockaddr_in *dest_addr, socklen_t dest_len, con
             continue;
         }
 
-        if (n > 0 && ack_from_client_pkt.ack_number == fin_pkt.seq_number + 1 && !(ack_from_client_pkt.flags & (FLAG_FIN | FLAG_ACK))) { // & , ^ testing
+        if (n > 0 && ack_from_client_pkt.ack_number == fin_pkt.seq_number + 1 && !(ack_from_client_pkt.flags ^ (FLAG_FIN | FLAG_ACK))) { 
             printf("[SERVER] FIN-ACK receive\n");
             fin_ack_receive = 1;
         } else {
@@ -163,6 +166,7 @@ int receive_file(int server_sockfd, const char *filename, connection_t *conn) {
     // ack_pkt : pkt ที่เอาไว้ส่ง ACK ไปยัง Server
     // expected_seq : seq ที่คาดหวังจากการรับข้อมูลถัดไปจาก Server
     Packet recv_pkt, ack_pkt;
+    memset(&ack_pkt, 0, sizeof(ack_pkt));
     int n;
     int expected_seq = conn->seq_num + 1;
 
@@ -193,9 +197,6 @@ int receive_file(int server_sockfd, const char *filename, connection_t *conn) {
         }
 
         printf("[CLIENT] DATA recieved (seq from server#: %d, ack#: %d)\n", recv_pkt.seq_number, recv_pkt.ack_number);
-
-        if (n <= 0)
-            break;
 
         // Check expected seq num -> ถ้าไม่ตรงกับที่คาดหวัง = duplicate packet
         if (recv_pkt.seq_number == expected_seq) {
@@ -253,9 +254,7 @@ int server_handle_syn(int sockfd, struct sockaddr_in *client_addr, socklen_t cli
     syn_ack_pkt.ack_number = conn->ack_num;
     syn_ack_pkt.flags = FLAG_SYN | FLAG_ACK;
 
-    // simulate windows and other field to 0 for testing purpose
     syn_ack_pkt.payload_length = 0;
-    syn_ack_pkt.window = 0;
     memset(syn_ack_pkt.payload, 0, sizeof(syn_ack_pkt.payload));
 
     // คำนวณ CheckSum ก่อนส่ง

@@ -7,10 +7,6 @@
 #include "packet.h"
 #include "protocol.h"
 
-#define BUFFER_SIZE 1024
-
-#define ARQ_STOP_AND_WAIT 1
-
 #include <string.h>
 
 int main(int argc, char *argv[]){

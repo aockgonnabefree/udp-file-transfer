@@ -18,7 +18,6 @@ u_int16_t calculate_checksum(Packet *pkt) {
     sum += pkt->ack_number & 0xFFFF;
     
     sum += pkt->payload_length;
-    sum += pkt->window;
     sum += pkt->flags;
 
     // 3. คำนวณ checksum สำหรับ payload

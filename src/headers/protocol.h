@@ -10,7 +10,6 @@
 typedef struct {
     int seq_num;
     int ack_num;
-    int window_size;
     char filename[256];
 } connection_t;
 
