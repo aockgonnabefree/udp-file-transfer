@@ -6,19 +6,11 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-// type สำหรับalgorithm ที่ server เลือกใช้ในการส่งไฟล์
-typedef enum {
-    STOP_AND_WAIT,
-    GO_BACK_N,
-    SELECTIVE_REPEAT
-}algo_t;
-
-// struct สำหรับการ maintain connection state ของ server หลังจาก handshake กับ client
+// struct สำหรับการ maintain connection state หลังจาก handshake
 typedef struct {
     int seq_num;
     int ack_num;
     int window_size;
-    algo_t algo;
     char filename[256];
 } connection_t;
 

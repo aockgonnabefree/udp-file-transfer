@@ -7,20 +7,29 @@
 #include "packet.h"
 #include "protocol.h"
 
-// #define IP "127.0.0.1"
-#define IP "10.31.22.230"
-#define PORT 8080
-
-int main()
+int main(int argc, char *argv[])
 {
+    // Check command-line arguments
+    if (argc != 4) {
+        printf("Usage: %s <server_ip> <port> <filename>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    // Parse command-line arguments
+    char *server_ip = argv[1];
+    int port = atoi(argv[2]);
+    char *filename = argv[3];
+
+    // Validate port
+    if (port <= 0 || port > 65535) {
+        printf("[CLIENT][ERROR] Invalid port number. Must be between 1-65535\n");
+        exit(EXIT_FAILURE);
+    }
+
     // Define variables
     int server_sockfd;
     struct sockaddr_in server_addr;
     socklen_t server_len = sizeof(server_addr);
-    
-    // char *filename = "example.jpeg";
-    char *filename = "Chapter_1_v9.0.pptx";
-    // char *filename = "example.txt";
 
     // Create an UDP socket
     server_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -32,8 +41,15 @@ int main()
 
     // Initialize server address structure
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(PORT);
-    server_addr.sin_addr.s_addr = inet_addr(IP);
+    server_addr.sin_port = htons(port);
+    if (inet_pton(AF_INET, server_ip, &server_addr.sin_addr) <= 0) {
+        printf("[CLIENT][ERROR] Invalid server IP address\n");
+        close(server_sockfd);
+        exit(EXIT_FAILURE);
+    }
+
+    printf("[CLIENT] Connecting to %s:%d\n", server_ip, port);
+    printf("[CLIENT] Requesting file: %s\n", filename);
 
     // Initiate Connection by 3-way handshake
     connection_t conn;

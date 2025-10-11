@@ -16,7 +16,7 @@ int send_file(int sockfd, struct sockaddr_in *dest_addr, socklen_t dest_len, con
     char path[256];
     snprintf(path, sizeof(path), "./example/%s", conn->filename);
     FILE *fp = fopen(path, "rb");
-    // Handle case File not found
+    // แจ้งเตือนว่าไม่เจอไฟล์ และรีเทิร์น -1
     if (fp == NULL) {
         printf("[ERROR] file not found: %s\n", path);
         return -1;
@@ -25,19 +25,19 @@ int send_file(int sockfd, struct sockaddr_in *dest_addr, socklen_t dest_len, con
     char file_buffer[BUFFER_SIZE];
     int bytes_read;
 
-    // read data in bytes --> BUFFER_SIZE per steps
-    
-    // Step 1.1: เตรียม socket timeout timing เพื่อ retransmit
+    // อ่านไฟล์ทีละ chunks - chunks ละ BUFFER_SIZE
+    // Step 2.1: เตรียม socket timeout timing เพื่อ retransmit
     struct timeval time_interval = {1, 0}; // 1 วินาที ในการรอ ACK ก่อนส่งใหม่
     setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &time_interval, sizeof(time_interval)); // function สำหรับ setting time out
 
-    // Step 1.3: เตรียมตัวแปร
+    // Step 2.3: เตรียมตัวแปร
     // data_pkt: สำหรับ pkt ที่ส่งข้อมูล 
     // ack_from_client_pkt: สำหรับ pkt ที่ client ส่งมาเพื่อ ACK
     // fin_pkt: สำหรับ pkt เพื่อส่งบอก client ว่าเสร็จสิ้นการส่งไฟล์
     Packet data_pkt, ack_from_client_pkt, fin_pkt;
     int seq = conn->seq_num + 1; // next sequence number from handshake
-    // Step 2: transfer file phase
+
+    // Step 2: เริ่มส่งไฟล์
     while ((bytes_read = fread(file_buffer, 1, BUFFER_SIZE, fp)) > 0) {
         // Step 2.1: กำหนดข้อมูลของ DATA pkt
         conn->seq_num = seq; // กำหนด seq number
@@ -45,7 +45,6 @@ int send_file(int sockfd, struct sockaddr_in *dest_addr, socklen_t dest_len, con
         data_pkt.ack_number = conn->ack_num;
         data_pkt.flags = FLAG_DATA; // Packet เป็นการส่งข้อมูล
 
-        // copy data into payload, tell bytes length
         memcpy(data_pkt.payload, file_buffer, bytes_read);
         data_pkt.payload_length = bytes_read;
 
@@ -53,10 +52,13 @@ int send_file(int sockfd, struct sockaddr_in *dest_addr, socklen_t dest_len, con
         data_pkt.check_sum = calculate_checksum(&data_pkt);
 
 
-        // Step 2.2: stop and wait implementation
+        // Step 2.2: STOP AND WAIT ARQ implementation
         int ack_receive = 0;
         while (!ack_receive) {
-            // ========================Simulate===========================
+            // ขั้นตอนการจำลอง Packet Loss, Packet Corruption
+            // โดยกำหนด โอกาศในการเกิด
+            // Packet Corruption: 1%
+            // Packet Loss: 1%
             data_pkt.check_sum = calculate_checksum(&data_pkt);
             Packet temp_pkt = data_pkt; // create a copy of the original packet
             packetCorrupted(&temp_pkt, 0.01); // 1% corruption
@@ -68,10 +70,10 @@ int send_file(int sockfd, struct sockaddr_in *dest_addr, socklen_t dest_len, con
             } else {
                 // ถ้า packet lost ก็ไม่ต้องส่ง และแสดง log เพื่อให้ทราบ
                 printf("[SIMULATOR] Packet (seq=%d) was lost.\n", data_pkt.seq_number);
-
             }        
-            // ======================End Simulate===========================
             
+
+            // รอรับ ACK จาก Client
             int n = recvfrom(sockfd, &ack_from_client_pkt, sizeof(ack_from_client_pkt), 0, (struct sockaddr *)dest_addr, &dest_len);
 
             // Timeout
@@ -86,7 +88,7 @@ int send_file(int sockfd, struct sockaddr_in *dest_addr, socklen_t dest_len, con
                 continue; // ทิ้ง packet ที่เสียหาย แล้ววนกลับไปรอ timeout
             }
 
-            // Check if it correct by ACK packet
+            // ตรวจสอบว่า ACK ที่ได้รับถูกต้อง ตรงตามลำดับ
             if (ack_from_client_pkt.ack_number == data_pkt.seq_number + data_pkt.payload_length) {
                 ack_receive = 1; // ACK ถูกต้อง -> ส่ง packet ต่อไป        
                 printf("[SERVER] ACK pkt recieved (ack=%d)\n", ack_from_client_pkt.ack_number);
@@ -98,12 +100,12 @@ int send_file(int sockfd, struct sockaddr_in *dest_addr, socklen_t dest_len, con
         }
     }
 
-    // Step 3: send FIN packet into Client to tell that it's finished of sending file
+    // Step 3: ส่ง FIN packet ไปยัง Client เพื่อบอกว่าเสร็จสิ้นการส่งข้อมูล
     fin_pkt.seq_number = seq+1;
     fin_pkt.payload_length = 0;
     fin_pkt.flags = FLAG_FIN;
 
-    // stop and wait for FIN-ACK pkt
+    // รอได้รับ FIN ACK จาก Client
     int fin_ack_receive = 0;
     while (!fin_ack_receive){
 
@@ -126,7 +128,7 @@ int send_file(int sockfd, struct sockaddr_in *dest_addr, socklen_t dest_len, con
             continue;
         }
 
-        if (n > 0 && ack_from_client_pkt.ack_number == fin_pkt.seq_number + 1 && !(ack_from_client_pkt.flags ^ (FLAG_FIN | FLAG_ACK))) {
+        if (n > 0 && ack_from_client_pkt.ack_number == fin_pkt.seq_number + 1 && !(ack_from_client_pkt.flags & (FLAG_FIN | FLAG_ACK))) { // & , ^ testing
             printf("[SERVER] FIN-ACK receive\n");
             fin_ack_receive = 1;
         } else {
@@ -143,7 +145,7 @@ int receive_file(int server_sockfd, const char *filename, connection_t *conn) {
     // Step 1: สร้างไฟลเพื่อเตรียมเขียนข้อมูล
     char path[256];
     snprintf(path, sizeof(path), "./client_download/%s", filename);
-    FILE *fp = fopen(path, "wb"); // need to change to "wb" if data is sent in binary
+    FILE *fp = fopen(path, "wb"); 
 
     // Handle error case
     if (!fp) {
@@ -159,9 +161,12 @@ int receive_file(int server_sockfd, const char *filename, connection_t *conn) {
     // Step 2: เตรียมตัวแปร
     // recv_pkt : pkt ที่รับมาจาก Server
     // ack_pkt : pkt ที่เอาไว้ส่ง ACK ไปยัง Server
+    // expected_seq : seq ที่คาดหวังจากการรับข้อมูลถัดไปจาก Server
     Packet recv_pkt, ack_pkt;
     int n;
-    int expected_seq = conn->seq_num + 1; // คาดหวัง seq ถัดจาก handshake
+    int expected_seq = conn->seq_num + 1;
+
+    // Step 3: รับข้อมูลจาก Server
     while (1) {
         n = recvfrom(server_sockfd, &recv_pkt, sizeof(recv_pkt), 0, (struct sockaddr *)&from_addr, &from_len);
 
@@ -171,10 +176,11 @@ int receive_file(int server_sockfd, const char *filename, connection_t *conn) {
             continue; // ทิ้ง packet นี้ แล้วรอ Server ส่งมาใหม่
         }
 
+        // ถ้าหาก packet เป็น FIN Packet ไม่ต้องเขียนไฟล์เพิ่ม
         if (recv_pkt.flags & FLAG_FIN){
             printf("[CLIENT] FIN recieved\n");
 
-            // send FIN-ACK to server
+            // ส่ง FIN-ACK ไปยัง server
             ack_pkt.ack_number = recv_pkt.seq_number + 1;
             ack_pkt.flags = FLAG_FIN | FLAG_ACK;
 
@@ -205,10 +211,10 @@ int receive_file(int server_sockfd, const char *filename, connection_t *conn) {
         }
 
         // ACK to server (ส่ง ACK ทุกครั้ง แม้จะเป็น duplicate packet)
-        ack_pkt.seq_number = 1; // just simulate, but it need to implement by conn
+        ack_pkt.seq_number = 1; // seq ของ client เป็น 1 ตลอดเพราะไม่ได้ส่งข้อมูล
         ack_pkt.ack_number = expected_seq; // ส่ง expected seq ถัดไป
+        ack_pkt.flags = FLAG_ACK;
 
-        // เหตุผล: เพื่อให้ Server เชื่อถือ ACK ที่เราส่งกลับไปได้
         ack_pkt.check_sum = calculate_checksum(&ack_pkt);
 
         sendto(server_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *) &from_addr, from_len);
@@ -303,7 +309,11 @@ int client_perform_handshake(int sockfd, struct sockaddr_in *server_addr, sockle
 
     printf("[CLIENT] SYN packet sent. seq#: %d, checksum: 0x%04X\n", syn_packet.seq_number, syn_packet.check_sum);
 
-    // Step 2: Client รอรับ SYN-ACK --> Need to implement TIMEOUT to check that it failed to established
+    // Step 2: Client รอรับ SYN-ACK 
+    // Set timeout
+    struct timeval time_interval = {1, 0}; // 1 วินาที ในการรอ ACK ก่อนส่งใหม่
+    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &time_interval, sizeof(time_interval)); // function สำหรับ setting time out
+
     Packet syn_ack_packet;
     if (recvfrom(sockfd, &syn_ack_packet, sizeof(syn_ack_packet), 0, (struct sockaddr *)server_addr, &server_len) < 0) {
         printf("[CLIENT][ERROR] receiving SYN-ACK packet\n");

@@ -7,16 +7,26 @@
 #include "packet.h"
 #include "protocol.h"
 
-// #define IP "127.0.0.1"
-#define IP "10.31.22.230"
-#define PORT 8080
 #define BUFFER_SIZE 1024
 
 #define ARQ_STOP_AND_WAIT 1
 
 #include <string.h>
 
-int main(){
+int main(int argc, char *argv[]){
+    // Check command-line arguments
+    if (argc != 2) {
+        printf("Usage: %s <port>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    // Parse port from command-line
+    int port = atoi(argv[1]);
+    if (port <= 0 || port > 65535) {
+        printf("[ERROR] Invalid port number. Must be between 1-65535\n");
+        exit(EXIT_FAILURE);
+    }
+
     // Define variables
     int server_sockfd;
     struct sockaddr_in server_addr, client_addr;
@@ -32,21 +42,20 @@ int main(){
 
     // Initialize server address structure
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(PORT);
-    server_addr.sin_addr.s_addr = inet_addr(IP);
+    server_addr.sin_port = htons(port);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
 
-    //
     if (bind(server_sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
         printf("[ERROR] bind error");
         exit(EXIT_FAILURE);
     }
 
+    printf("[SERVER] Server started on port %d\n", port);
+
     while(1) {
         connection_t conn;
-        conn.algo = STOP_AND_WAIT; // config ได้
-        conn.window_size = 10; // default กรณีใช้ Go back n, Selective repeat
-        printf("Server is running. Waiting for SYN packet. (CTRL+C to exit)\n");
+        printf("[SERVER] Waiting for SYN packet. (CTRL+C to exit)\n");
         if (server_handle_syn(server_sockfd, &client_addr, client_len, &conn) == 0) {
             send_file(server_sockfd, &client_addr, client_len, &conn);
         } else {
